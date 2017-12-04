@@ -99,10 +99,29 @@ public extension Router {
             mutableURLRequest.httpMethod = method.rawValue
             return mutableURLRequest
         case .form:
-            let query = urlComponents.percentEncodedQuery?.data(using: .utf8)
+            let queryData = urlComponents.percentEncodedQuery?.data(using: .utf8)
             // clear the query items as they go into the body
             urlComponents.queryItems = nil
-            /// TODO: https://github.com/nerdishbynature/RequestKit/blob/master/RequestKit/Router.swift
+            guard let url = urlComponents.url else { return nil }
+            var mutableURLRequest = URLRequest(url: url)
+            mutableURLRequest.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "content-type")
+            mutableURLRequest.httpBody = queryData
+            mutableURLRequest.httpMethod = method.rawValue
+            return mutableURLRequest
+        }
+    }
+    
+    public func request() -> URLRequest? {
+        let endPoint = configuration.apiEndpoint
+        guard let relativeUrl = URL(string: endPoint) else { return nil }
+        guard let url = URL(string: path, relativeTo: relativeUrl) else { return nil }
+        var parameters = encoding == .json ? [:] : params
+        if let accessToken = configuration.accessToken {
+            parameters[configuration.accessTokenFieldName] = accessToken as AnyObject?
+        }
+        if let components = URLComponents(url: url, resolvingAgainstBaseURL: true) {
+            return request(components, parameters: parameters)
+        } else {
             return nil
         }
     }
